@@ -410,3 +410,369 @@ select last_name, email, department_id from employees where email like '%e%' ord
 select last_name, email, department_id from employees where email REGEXP '[e]' order by LENGTH(email) DESC, department_id ASC;
 ```
 
+# 多表查询
+
+多表查询，也称为关联查询，指两个或更多个表一起完成查询操作。
+
+前提条件：这些一起查询的表之间是有关系的（一对一、一对多），它们之间一定是有关联字段，这个 关联字段可能建立了外键，也可能没有建立外键。比如：`员工表`和`部门表`，这两个表依靠`部门编号`进行关联。
+
+笛卡尔乘积是一个数学运算。假设我有两个集合`X`和`Y`，那么`X`和`Y`的笛卡尔积就是`X`和`Y`的所有可能 组合，也就是第一个对象来自于`X`，第二个对象来自于`Y`的所有可能。组合的个数即为两个集合中元素个数的乘积数。
+
+`SQL92`中，笛卡尔积也称为交叉连接 ，英文是`CROSS JOIN`。在`SQL99`中也是使用`CROSS JOIN`表示交叉连接。它的作用就是可以把任意表进行连接，即使这两张表不相关。在`MySQL`中如下情况会出现笛卡尔积：
+
+```sql
+SELECT last_name,department_name FROM employees,departments;
+
+SELECT last_name,department_name FROM employees CROSS JOIN departments;
+
+SELECT last_name,department_name FROM employees INNER JOIN departments;
+
+SELECT last_name,department_name FROM employees JOIN departments;
+```
+
+因此，为了避免产生笛卡尔积，应该加入有效的连接条件。
+
+```sql
+select table1.column, table2.column from table1, table2 where table1.column = table2.column;
+
+SELECT last_name, department_name
+FROM employees, departments
+WHERE employees.department_id = departments.department_id;
+```
+
+## 等值连接`vs`非等值连接
+
+```sql
+SELECT departments.location_id FROM employees, departments WHERE employees.department_id = departments.department_id;
+```
+
+等值连接区分重复列名：
+
+```sql
+SELECT employees.last_name, departments.department_name,employees.department_id
+FROM employees, departments
+WHERE employees.department_id = departments.department_id;
+```
+
+等值连接给表取别名：
+
+```sql
+SELECT e.employee_id, e.last_name, e.department_id,
+d.department_id, d.location_id
+FROM employees e , departments d
+WHERE e.department_id = d.department_id;
+```
+
+需要注意的是，如果我们使用了表的别名，在查询字段中、过滤条件中就只能使用别名进行代替， 不能使用原有的表名，否则就会报错。
+
+`1052 字段名重复异常：Column 'name' in field list is ambiguous`
+
+连接多个表：
+
+```sql
+SELECT e.last_name, e.salary, j.grade_level
+FROM employees e, job_grades j
+WHERE e.salary BETWEEN j.lowest_sal AND j.highest_sal;
+```
+
+## 自连接`vs`非自连接
+
+```sql
+SELECT CONCAT(worker.last_name ,' works for '
+, manager.last_name)
+FROM employees worker, employees manager
+WHERE worker.manager_id = manager.employee_id ;
+```
+
+- 内连接: 合并具有同一列的两个以上的表的行, 结果集中不包含一个表与另一个表不匹配的行
+- 外连接: 两个表在连接过程中除了返回满足连接条件的行以外还返回左（或右）表中不满足条件的 行 ，这种连接称为左（或右） 外连接。
+- 没有匹配的行时, 结果表中相应的列为空(NULL)。 
+- 如果是左外连接，则连接条件中左边的表也称为`主表` ，右边的表称为`从表`。
+-  如果是右外连接，则连接条件中右边的表也称为`主表`，左边的表称为`从表`。
+
+- 在`SQL92`中采用`（+）`代表从表所在的位置。即左或右外连接中，`(+)`表示哪个是从表。
+
+- `Oracle`对`SQL92`支持较好，而`MySQL` 则不支持`SQL92`的外连接。
+
+- 而且在`SQL92`中，只有左外连接和右外连接，没有满（或全）外连接。
+
+  ```sql
+  #左外连接
+  SELECT last_name,department_name
+  FROM employees ,departments
+  WHERE employees.department_id = departments.department_id(+);
+  
+  #右外连接
+  SELECT last_name,department_name
+  FROM employees ,departments
+  WHERE employees.department_id(+) = departments.department_id;
+  ```
+
+`SQL99`也可以做多表查询，而且可读性比`SQL92`要高。
+
+- 可以使用`ON`子句指定额外的连接条件。
+- 这个连接条件是与其它条件分开的。
+- `ON`子句使语句具有更高的易读性。
+- 关键字`JOIN、INNER JOIN、CROSS JOIN`的含义是一样的，都表示内连接
+
+## 内连接和外连接
+
+内连接的实现：`JOIN / INNER JOIN / CROSS JOIN`
+
+```sql
+SELECT e.employee_id, e.last_name, e.department_id,
+d.department_id, d.location_id
+FROM employees e JOIN departments d
+ON (e.department_id = d.department_id);
+```
+
+左外连接的实现：`LEFT JOIN / LEFT OUTER JOIN`
+
+```sql
+SELECT e.last_name, e.department_id, d.department_name
+FROM employees e
+LEFT OUTER JOIN departments d
+ON (e.department_id = d.department_id);
+```
+
+右外连接的实现：`RIGHT JOIN / RIGHT OUTER JOIN`
+
+```sql
+ELECT e.last_name, e.department_id, d.department_name
+FROM employees e
+RIGHT OUTER JOIN departments d
+ON (e.department_id = d.department_id);
+```
+
+需要注意的是，`LEFT JOIN`和`RIGHT JOIN`只存在于`SQL99`及以后的标准中，在`SQL92`中不存在， 只能用` (+)`表示。
+
+满外连接：【`MySLQ`不支持满外连接但是可以使用`LEFT JOIN UNION RIGHT JOIN`代替】
+
+- **满外连接的结果 = 左右表匹配的数据 + 左表没有匹配到的数据 + 右表没有匹配到的数据。**
+- `SQL99`是支持满外连接的。使用`FULL JOIN`或`FULL OUTER JOIN`来实现。 需要注意的是，`MySQL`不支持`FULL JOIN`，但是可以用`LEFT JOIN UNION RIGHT JOIN`代替。
+
+## `UNION`
+
+合并查询结果利用`UNION`关键字，可以给出多条`SELECT`语句，并将它们的结果组合成单个结果集。**合并时，两个表对应的列数和数据类型必须相同**，并且相互对应。各个`SELECT`语句之间使用`UNION`或`UNION ALL`关键字分隔。
+
+**`UNION`操作符返回两个查询的结果集的并集，去除重复记录。**
+
+**`UNION ALL`操作符返回两个查询的结果集的并集。对于两个结果集的重复部分，不去重。**
+
+查询部门编号`>90`或邮箱包含`a`的员工信息：
+
+```sql
+SELECT * FROM employees WHERE email LIKE '%a%' OR department_id>90;
+
+SELECT * FROM employees WHERE email LIKE '%a%'
+UNION
+SELECT * FROM employees WHERE department_id>90;
+```
+
+查询中国用户中男性的信息以及美国用户中年男性的用户信息：
+
+```sql
+SELECT id,cname FROM t_chinamale WHERE csex='男'
+UNION ALL
+SELECT id,tname FROM t_usmale WHERE tGender='male';
+```
+
+## 总结：七种`SQL JOINS`的实现
+
+![](https://img-blog.csdnimg.cn/8b385fa0194b4e22a05b8a3839ee1c17.png)
+
+1. 中图：内连接
+
+   ```sql
+   select employee_id, last_name, department_name from employees e INNER JOIN departments d on e.department_id = d.department_id;
+   ```
+
+2. 左上图：左外连接
+
+   ```sql
+   SELECT employee_id,last_name,department_name FROM employees e LEFT JOIN departments d ON e.`department_id` = d.`department_id`;
+   ```
+
+3. 右上图：右外连接
+
+   ```sql
+   SELECT employee_id,last_name,department_name FROM employees e RIGHT JOIN departments d ON e.`department_id` = d.`department_id`;
+   ```
+
+4. 左中图：左外连接 - 内连接
+
+   ```sql
+   SELECT employee_id,last_name,department_name FROM employees e LEFT JOIN departments d ON e.`department_id` = d.`department_id` where d.`department_id` IS NULL;
+   ```
+
+5. 右中图：右外连接 - 内连接
+
+   ```sql
+   SELECT employee_id,last_name,department_name FROM employees e RIGHT JOIN departments d ON e.`department_id` = d.`department_id` where e.`department_id` IS NULL;
+   ```
+
+6. 左下图：左上图 + 右中图
+
+   ```sql
+   SELECT employee_id,last_name,department_name FROM employees e LEFT JOIN departments d ON e.`department_id` = d.`department_id`;
+   UNION ALL
+   SELECT employee_id,last_name,department_name FROM employees e RIGHT JOIN departments d ON e.`department_id` = d.`department_id` where e.`department_id` IS NULL;
+   ```
+
+7. 右下图：左中图 + 右中图
+
+   ```sql
+   SELECT employee_id,last_name,department_name FROM employees e LEFT JOIN departments d ON e.`department_id` = d.`department_id` where d.`department_id` IS NULL;
+   UNION ALL
+   SELECT employee_id,last_name,department_name FROM employees e RIGHT JOIN departments d ON e.`department_id` = d.`department_id` where e.`department_id` IS NULL;
+   ```
+
+## `SQL99`语法新特性
+
+自然连接：
+
+`SQL99`在`SQL92`的基础上提供了一些特殊语法，比如`NATURAL JOIN`用来表示自然连接。我们可以把自然连接理解为`SQL92`中的等值连接。它会帮你自动查询两张连接表中所有相同的字段 ，然后进行等值连接 。
+
+```sql
+SELECT employee_id,last_name,department_name
+FROM employees e JOIN departments d
+ON e.`department_id` = d.`department_id`
+AND e.`manager_id` = d.`manager_id`;
+```
+
+可以写成：
+
+```sql
+SELECT employee_id,last_name,department_name
+FROM employees e NATURAL JOIN departments d;
+```
+
+`USING`连接：
+
+当我们进行连接的时候，`SQL99`还支持使用`USING`指定数据表里的同名字段进行等值连接。但是只能配合`JOIN`一起使用。比如：
+
+```sql
+SELECT employee_id,last_name,department_name
+FROM employees e JOIN departments d
+USING (department_id);
+```
+
+## 注意事项
+
+我们要控制连接表的数量 。多表连接就相当于嵌套`for`循环一样，非常消耗资源，会让`SQL`查询性能下降得很严重，因此不要连接不必要的表。
+
+在许多`DBMS`中，也都会有最大连接表的限制。 
+
+- 【强制】超过三个表禁止`join`。需要`join`的字段，数据类型保持绝对一致；多表关联查询时， 保证被关联的字段需要有索引。
+-  说明：即使双表`join`也要注意表索引、`SQL`性能。
+
+## 练习
+
+```sql
+# 1.显示所有员工的姓名，部门号和部门名称。
+# 2.查询90号部门员工的job_id和90号部门的location_id
+# 3.选择所有有奖金的员工的 last_name , department_name , location_id , city
+# 4.选择city在Toronto工作的员工的 last_name , job_id , department_id , department_name
+# 5.查询员工所在的部门名称、部门地址、姓名、工作、工资，其中员工所在部门的部门名称为’Executive’
+# 6.选择指定员工的姓名，员工号，以及他的管理者的姓名和员工号，结果类似于下面的格式
+	employees Emp# manager Mgr#
+	kochhar 101 king 100
+# 7.查询哪些部门没有员工
+# 8. 查询哪个城市没有部门
+# 9. 查询部门名为 Sales 或 IT 的员工信息
+
+select last_name, e.department_id, department_name from employee e left outer join departments d on e.department_id = d.department_id;
+
+SELECT job_id, location_id
+FROM employees e, departments d
+WHERE e.`department_id` = d.`department_id`
+AND e.`department_id` = 90;
+----------------------------------------------------------------------------------------SELECT job_id, location_id
+FROM employees e
+JOIN departments d
+ON e.`department_id` = d.`department_id`
+WHERE e.`department_id` = 90;
+
+SELECT last_name , department_name , d.location_id , city
+FROM employees e
+LEFT OUTER JOIN departments d
+ON e.`department_id` = d.`department_id`
+LEFT OUTER JOIN locations l
+ON d.`location_id` = l.`location_id`
+WHERE commission_pct IS NOT NULL;
+
+SELECT last_name , job_id , e.department_id , department_name
+FROM employees e, departments d, locations l
+WHERE e.`department_id` = d.`department_id`
+AND d.`location_id` = l.`location_id`
+AND city = 'Toronto';
+----------------------------------------------------------------------------------------
+SELECT last_name , job_id , e.department_id , department_name
+FROM employees e
+JOIN departments d
+ON e.`department_id` = d.`department_id`
+JOIN locations l
+ON l.`location_id` = d.`location_id`
+WHERE l.`city` = 'Toronto';
+
+SELECT department_name, street_address, last_name, job_id, salary
+FROM employees e JOIN departments d
+ON e.department_id = d.department_id
+JOIN locations l
+ON d.`location_id` = l.`location_id`
+WHERE department_name = 'Executive'
+
+SELECT emp.last_name employees, emp.employee_id "Emp#", mgr.last_name manager,
+mgr.employee_id "Mgr#"
+FROM employees emp
+LEFT OUTER JOIN employees mgr
+ON emp.manager_id = mgr.employee_id
+
+SELECT d.department_id
+FROM departments d LEFT JOIN employees e
+ON e.department_id = d.`department_id`
+WHERE e.department_id IS NULL
+----------------------------------------------------------------------------------------
+SELECT department_id
+FROM departments d
+WHERE NOT EXISTS (SELECT * FROM employees e WHERE e.`department_id` = d.`department_id`)
+
+SELECT l.location_id,l.city
+FROM locations l LEFT JOIN departments d
+ON l.`location_id` = d.`location_id`
+WHERE d.`location_id` IS NULL
+
+SELECT employee_id,last_name,department_name
+FROM employees e,departments d
+WHERE e.department_id = d.`department_id`
+AND d.`department_name` IN ('Sales','IT');
+```
+
+```sql
+#1.所有有门派的人员信息
+select * from t_emp a, t_dept b where a.deptId = b.id;
+select * from t_emp a inner join t_dept b on a.deptId = b.id;
+#2.列出所有用户，并显示其机构信息
+select * from t_emp a left outer join t_dept b on a.deptId = b.id;
+#3.列出所有门派
+select * from t_dept b;
+#4.所有不入门派的人员
+select * from t_emp a left outer join t_dept b on a.deptId = b.id where b.deptName is null;
+#5.所有没人入的门派
+select * from t_emp a right outer join t_dept b on a.deptId = b.id where a.`deptId` is null;
+#6.列出所有人员和机构的对照关系
+select * from t_emp a left outer join t_dept b on a.deptId = b.id
+union all
+select * from t_emp a right outer join t_dept b on a.deptId = b.id where a.`deptId` is null;
+#或者
+select * from t_emp a left outer join t_dept b on a.deptId = b.id
+union
+select * from t_emp a right outer join t_dept b on a.deptId = b.id
+#7.列出所有没入派的人员和没人入的门派
+select * from t_emp a left outer join t_dept b on a.deptId = b.id where b.`id` is null
+union all
+select * from t_emp a right outer join t_dept b on a.deptId = b.id where a.`deptId` is null
+```
+
+
+
