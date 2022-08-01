@@ -137,3 +137,61 @@ drop database database_name;
 show variables like 'character%';
 ```
 
+# 基本的`SELECT`语句
+
+`SQL`分类
+
+- `DDL`（`Data Definition Languages`）：数据定义语言，这些语句定义了不同的数据库、表、视图、索 引等数据库对象，还可以用来创建、删除、修改数据库和数据表的结构。`CREATE DROP ALTER`等。
+- `DML`（`Data Manipulation Languages`）：数据操作语言，用于添加、删除、更新和查询数据库记 录，并检查数据完整性。`INSERT DELETE UPDATE SELECT`等。
+- `DCL`（`Data Control Languages`）：数据控制语言，用于定义数据库、表、字段、用户的访问权限和 安全级别。`GRANT REVOKE COMMIT ROLLBACK SAVEPOINT`等。
+
+因为查询语句使用地非常频繁，所以很多很查询语句单独拎出来，作为数据查询语言`DQL`。还有单独将`COMMIT ROLLBACK`取出来称为`TCL`【**`Transaction Control Language`事务控制语言**】
+
+`MySQL`在`Windows`环境下大小写是不敏感的，在`Linux`环境下大小写是敏感的。推荐统一采用的书写规范：
+
+- 数据库名、表名、表别名、字段名、字段别名都小写。
+- `SQL`关键字、函数名、绑定变量等都大写。
+
+数据导入指令：`source d:\mysqldb.sql`
+
+```sql
+select 1;
+select 9/3;
+select * from users;
+select uname from users;
+select uname AS 'Name' from users;
+select uname 'Name' from users;
+select distinct * from users;
+# 所有运算符或者列值遇到 NULL 其结果都为 NULL，MySQL 中空值是占用空间的
+# 如果表名/记录名/字段名跟保留字数据库系统或常用方法冲突，如果真的相同，可以使用着重号引起来。
+select * from `order`;
+# 显示表建结构
+describe employees; / desc employee;
+# 条件语句
+select * from users where uname = '张三';
+```
+
+```sql
+#【题目】
+# 1.查询员工12个月的工资总和，并起别名为ANNUAL SALARY
+# 2.查询employees表中去除重复的job_id以后的数据
+# 3.查询工资大于12000的员工姓名和工资
+# 4.查询员工号为176的员工的姓名和部门号
+# 5.显示表 departments 的结构，并查询其中的全部数据
+
+# commission_pct 若为 NULL：
+# 显示 NULL 值
+select employee_id, last_name, salary * 12 "ANNUAL SALARY" from employees;
+# NULL 值显示为 0
+select employee_id, last_name, salary * 12 * (1 + IFNULL(commission_pct, 0)) "ANNUAL SALARY" from employees;
+
+select DISTINCT job_id from employees;
+
+select last_name, salary from employees where salary > 12000;
+
+select last_name, departname_id from employees where employee_id = 176;
+
+describe departments;
+select * from departments;
+```
+
