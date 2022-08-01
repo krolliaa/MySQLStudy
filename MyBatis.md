@@ -79,6 +79,8 @@
         - 订单表：“订单”表中的每条记录表示一个订单。
         - 订单明细表：每个产品可以与“订单”表中的多条记录对应，即出现在多个订单中。一个订单 可以与“产品”表中的多条记录对应，即包含多个产品。
 
+        ![](https://img-blog.csdnimg.cn/46f75da3560d4aabb8253235a839f1e7.png)
+
       - 举例3：用户-角色
 
         多对多关系建表原则：需要创建第三张表，中间表中至少两个字段，这两个字段分别作为外键指向 各自一方的主键。
@@ -97,5 +99,41 @@
 
     可以看到这里员工编号`104`和`105`的员工的主管编号均为：`103`而这里的`103`引用的就是`103`员工编号，这就称为自我引用`Self Reference`。
 
+# `MySQL`简单操作
 
+```sql
+# 查看当前 MySQL 版本
+mysql --version
+# 进入 MySQL
+mysql -u root -p
+# 查看当前 MySQL 版本
+select version();
+# 查看 MySQL 中所有数据库
+show databaes;
+# 创建数据库
+create database database_name;
+# 使用某个数据库
+use database_name;
+# 查看某个指定数据库中的所有表
+show tables from database_name;
+# 在当前数据库中创建新的表
+create table 表名称 {
+	字段名 数据类型，
+	字段名 数据类型
+};
+# 查看某张表的所有数据
+select * from table_name;
+# 往某张表中添加一条记录
+insert into table_name values(...);
+# 查看某张表的创建信息
+show create table table_name;
+# 查看某数据库的创建信息
+show create database database_name;
+# 删除当前数据库的某张表
+drop table table_name;
+# 删除数据库
+drop database database_name;
+# 查看 MySQL 字符编码配置
+show variables like 'character%';
+```
 
