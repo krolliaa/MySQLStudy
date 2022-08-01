@@ -372,3 +372,41 @@ select last_name, job_id from employees where department_id between 80 and 100;
 select last_name,salary,manager_id from employees where manager_id in (100, 101, 110);
 ```
 
+# 排序与分页
+
+- `order by ... asc/desc`
+
+- `limit [位置偏移量，行数]`
+
+  ```sql
+  # 显示前 10 条记录：
+  select * from table_name limit 0, 10;
+  
+  # 显示第 11 - 20 条记录：
+  select * from table_name limit 10, 10;
+  
+  # 显示第 21 - 30 条记录：
+  select * from table_name limit 20, 30;
+  ```
+
+  在`MySQL 8.0`中还可以使用：`LIMIT 3 OFFSET 4`其本质等于`limit 4, 3`从第`5`条记录开始查询查询`3`条记录。
+
+  注：`LIMIT`子句一定要放在整个`SELECT`语句的最后面！
+
+- 分页显示公式：`limit (当前页数 - 1) * 每页条数, 每页条数`
+
+  起始条：`（当前页数 - 1） * 每页条数`
+
+```sql
+#1. 查询员工的姓名和部门号和年薪，按年薪降序,按姓名升序显示
+#2. 选择工资不在 8000 到 17000 的员工的姓名和工资，按工资降序，显示第21到40位置的数据
+#3. 查询邮箱中包含 e 的员工信息，并先按邮箱的字节数降序，再按部门号升序
+
+select last_name,department_id,salary * 12 annual_sal from employees order by annual_sal DESC, last_name ASC;
+
+select last_name, salary from employees where salary not between 8000 and 17000 order by salary desc limit 20, 20;
+
+select last_name, email, department_id from employees where email like '%e%' order by LENGTH(email) DESC, department_id ASC;
+select last_name, email, department_id from employees where email REGEXP '[e]' order by LENGTH(email) DESC, department_id ASC;
+```
+
