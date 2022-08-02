@@ -866,3 +866,165 @@ from employees;
 - `CASE WHEN THEN END`简单使用
 - 截取小数点多少位使用：`TRUNCATE(salary, 0)`\
 - 格式化日期可以使用：`DATE_FORMAT()`，其中`%i`代表分钟
+
+# 聚合函数
+
+聚合函数作用于一组数据，并对一组数据返回一个值。它是对 一组数据进行汇总的函数，输入的是一组数据的集合，输出的是单个值。
+
+聚合函数类型：`AVG() SUM() MAX() MIN() COUNT()`
+
+## `AVG()`函数
+
+可以对数值类型的数据使用`AVG()`函数，意思是求平均数。
+
+```sql
+select AVG(salry) from employees where job_id like '%REP';
+```
+
+## `SUM()`函数
+
+可以对数值类型的数据使用`SUM()`函数，意思是求和。
+
+```sql
+select SUM(salry) from employees where job_id like '%REP';
+```
+
+## `MIN()`函数
+
+可以对任意数据类型的数据使用`MIN()`函数，意思是求最小值。
+
+```sql
+select MIN(salry) from employees;
+```
+
+## `MAX()`函数
+
+可以对任意数据类型的数据使用`MAX()`函数，意思是求最大值。
+
+```sql
+select MAX(salry) from employees;
+```
+
+## `COUNT()`函数
+
+可以对任意数据类型的数据使用`COUNT()`函数，意思是求记录总数。
+
+`count(*)`跟`count(1)`的作用是一样的，都是读取行数。不排除有`NULL`字段的记录。
+
+```sql
+select COUNT(*) from employees;
+```
+
+还可以返回某字段不为空的记录总数：
+
+```sql
+select COUNT(commission_pct) from employees;
+```
+
+## `GROUP BY`分组
+
+该函数可以将数据分为若干组，可以结合聚合函数使用。`where`一定要放在`from`后面。比如这里按照不同部门进行分组：
+
+```sql
+SELECT department_id, AVG(salary)
+FROM employees
+GROUP BY department_id ;
+```
+
+- **<font color="red">在`SELECT`列表中所有未包含在组函数中的列都应该包含在`GROUP BY`子句中</font>**
+
+- 使用`WITH ROLLUP`关键字之后，在所有查询出的分组记录之后增加一条记录，该记录计算查询出的所 有记录的总和，即统计记录数量。
+
+  ```sql
+  SELECT department_id,AVG(salary)
+  FROM employees
+  WHERE department_id > 80
+  GROUP BY department_id WITH ROLLUP;
+  ```
+
+  注意：当使用`ROLLUP`时，不能同时使用`ORDER BY`子句进行结果排序，即`ROLLUP`和`ORDER BY`是互相排斥 的。
+
+## `HAVING`分组条件
+
+- 必须跟`GORUP BY()`一起使用
+- 满足`HAVING`子句中条件的分组将被显示
+- `HAVING()`函数就是专门为分组并且使用了聚合函数的记录所服务的，没有分组就没有`HAVING()`
+- 你的条件中有聚合函数那么你就必须使用`HAVING()`，是不允许在`where`中带聚合函数的条件的，有`HAVING()`你就必须得有分组。
+
+```sql
+SELECT department_id, MAX(salary)
+FROM employees
+GROUP BY department_id
+HAVING MAX(salary)>10000 ;
+```
+
+`HAVING`跟`WHERE`的区别：
+
+1. `HAVING`必须配合`GROUP BY`使用，可以把分组计算的函数和分组字段作为筛选条件，但是`WHERE`不可以。
+2. `WHERE`是先筛选后连接而`HAVING`是先连接后筛选。
+
+总的来说：普通条件用`WHERE`，分组条件用`HAVING`
+
+## `SELECT`执行过程
+
+```sql
+SELECT ...,....,...
+FROM ... JOIN ...
+ON 多表的连接条件
+JOIN ...
+ON ...
+WHERE 不包含组函数的过滤条件
+AND/OR 不包含组函数的过滤条件
+GROUP BY ...,...
+HAVING 包含组函数的过滤条件
+ORDER BY ... ASC/DESC
+LIMIT ...,...
+
+# 1.from:从哪些表中筛选
+# 2.on:关联多表查询时，去除笛卡尔积
+# 3.where:从表中筛选的条件
+# 4.group by:分组依据
+# 5.having:在统计结果中再次筛选
+# 6.select 的字段
+# 7.distinct：去重
+# 8.order by:排序
+# 9.limit：分页
+```
+
+关键字顺序不能改：
+
+```sql
+select ... join ... on ... join ... on ... from ... where ... and ... or ... group by ... having ... order by ... desc/asc ... limit ...
+```
+
+执行顺序不能改：
+
+```sql
+from ---> on ---> where ---> group by ---> having ---> select 的字段 ---> distinct 去重 ---> order by ---> limit 
+```
+
+在`SELECT`语句执行这些步骤的时候，每个步骤都会产生一个 虚拟表 ，然后将这个虚拟表传入下一个步骤中作为输入。需要注意的是，这些步骤隐含在 `SQL`的执行过程中，对于我们来说是不可见的。
+
+## `SELECT`执行原理
+
+`SELECT`是先执行`FROM`这一步骤的。在这个阶段如果是多张表联查，还会经历如下几个步骤：
+
+1. 首先通过`JOIN/CORSS JOIN/INNER JOIN`获取笛卡尔积，相当于得到一张虚拟表`vt 1-1`
+2. 然后通过`ON`进行筛选，得到虚拟表`vt 1-2`
+3. 紧接着添加外部行。如果使用外连接，不管是左连接还是右连接还是满连接，只要涉及到连接就会涉及到外部行，在第二章虚拟表中增添外部行得到虚拟表`vt 1-3`
+
+重复以上三步直到所有表被处理完位置，获取到原始数据。
+
+3. 接着进入到`GROUP BY`阶段在第三张虚拟表的基础上进行分组得到虚拟表`vt 3`
+
+4. 在第四张虚拟表中使用`HAVING`进行条件筛选得到第五张虚拟表`vt 4`
+
+5. 在第四张虚拟表中就可以筛选出提取的字段即进入到`SELECT DISTINCT`阶段得到`vt 5-1`和`vt 5-2`。
+
+6. 接着就可以对获取到的字段数据进行排序进入到`ORDER BY`阶段得到虚拟表`vt 6`
+
+7. 最后在第六张虚拟表的基础上可以取出指定行的记录即`LIMIT`分页阶段，获取到第七张虚拟表`vt 7`
+
+【这里就获取到的表大概率是不止七张的这样讲只不过是便于理解，因为在连接阶段就可能产生更多的虚拟表】
+
+**<FONT COLOR="RED">所谓`SQL`底层运行的原理，就是我们刚才讲到的执行顺序。</FONT>**
