@@ -774,5 +774,95 @@ union all
 select * from t_emp a right outer join t_dept b on a.deptId = b.id where a.`deptId` is null
 ```
 
+# 单行函数
 
+函数的作用是什么呢？它可以把我们经常使用的代码封装起来， 需要的时候直接调用即可。这样既 提高了代码效率 ，又 提高了可维护性 。在`SQL`中我们也可以使用函数 对检索出来的数据进行函数操作。使用这些函数，可以极大地 提高用户对数据库的管理效率 。
 
+从函数定义的角度出发，我们可以将函数分成`内置函数`和`自定义函数`。在`SQL`语言中，同样也包括了内置函数和自定义函数。内置函数是系统内置的通用函数，而自定义函数是我们根据自己的需要编写的。
+
+我们在使用`SQL`语言的时候，不是直接和这门语言打交道，而是通过它使用不同的数据库软件，即`DBMS`。`DBMS`之间的差异性很大，远大于同一个语言不同版本之间的差异。实际上，只有很少的函数是被`DBMS`同时支持的。比如，大多数`DBMS`使用`（||）`或者`（+）`来做拼接符，而在`MySQL`中的字符串拼 接函数为`concat()`。大部分`DBMS`会有自己特定的函数，这就意味着采用`SQL`函数的代码可移植性是很差的，因此在使用函数的时候需要特别注意。
+
+`MySQL`提供的内置函数从 实现的功能角度 可以分为数值函数、字符串函数、日期和时间函数、流程控制函数、加密与解密函数、获取`MySQL`信息函数、聚合函数等。
+
+内置函数可以简单的分为：`单行函数`、`聚合函数【分组函数】`
+
+单行函数：
+
+- 操作数据对象
+- 接受参数返回一个结果
+- 只对一行进行变换
+- 每行返回一个结果
+- 可以嵌套
+- 参数可以是一列或一个值
+
+| 函数                    | 描述                                                         |
+| ----------------------- | ------------------------------------------------------------ |
+| `ABS(x)`                | 返回x的绝对值                                                |
+| `SIGN(X)`               | 返回X的符号。正数返回1，负数返回-1，0返回0                   |
+| `PI()`                  | 返回圆周率的值                                               |
+| `CEIL(x)，CEILING(x) `  | 返回大于或等于某个值的最小整数                               |
+| `FLOOR(x) `             | 返回小于或等于某个值的最大整数                               |
+| `LEAST(e1,e2,e3…) `     | 返回列表中的最小值                                           |
+| `GREATEST(e1,e2,e3…)  ` | 返回列表中的最大值                                           |
+| `MOD(x,y) `             | 返回X除以Y后的余数                                           |
+| `RAND() `               | 返回0~1的随机值                                              |
+| `RAND(x) `              | 返回0~1的随机值，其中x的值用作种子值，相同的X值会产生相同的随机 数 |
+| `ROUND(x) `             | 返回一个对x的值进行四舍五入后，最接近于X的整数               |
+| `ROUND(x,y)`            | 返回一个对x的值进行四舍五入后最接近X的值，并保留到小数点后面Y位 |
+| `TRUNCATE(x,y) `        | 返回数字x截断为y位小数的结果                                 |
+| `SQRT(x) `              | 返回x的平方根。当X的值为负数时，返回NULL                     |
+| `RADIANS(x) `           | 将角度转化为弧度，其中，参数x为角度值                        |
+| `DEGREES(x)`            | 将弧度转化为角度，其中，参数x为弧度值                        |
+
+等等，内置函数太多了，这里只得省略。
+
+练习：
+
+```sql
+# 1.显示系统时间(注：日期+时间)
+select now();
+select now() from dual;
+# 2.查询员工号，姓名，工资，以及工资提高百分之20%后的结果（new salary）
+select employee_id, last_name, salary, salary * 1.2 "new salary" from employeesl
+# 3.将员工的姓名按首字母排序，并写出姓名的长度（length）
+select last_name, length(last_name) from employees order by last_name desc;
+# 4.查询员工id,last_name,salary，并作为一个列输出，别名为OUT_PUT
+select concat(employee_id, ',', last_name, ',', salary) OUT_PUT from employees;
+# 5.查询公司各员工工作的年数、工作的天数，并按工作年数的降序排序
+select datediff(sysdate(), hire_date) / 365 worked_years, datediff(sysdate(), hire_date) worled_days from employees order by worked_years desc;
+# 6.查询员工姓名，hire_date , department_id，满足以下条件：雇用时间在1997年之后，department_id为80 或 90 或110, commission_pct不为空
+select last_name, hire_date, department_id from employees where hire_date >= '1997-01-01' and department_id in (80, 90, 110) and commission_pct is not null;
+select last_name, hire_date, department_id from employees where hire_date >= str_to_date('1997-01-01', "%Y-%m-%d") and department_id in (80, 90, 110) and commission_pct is not null;
+select last_name, hire_date, department_id from employees where DATE_FORMAT(hire_date, %Y) >= '1997' and department_id in (80, 90, 110) and commission_pct is not null;
+# 7.查询公司中入职超过10000天的员工姓名、入职时间
+select last_name,hire_date from employees where DATE_FORMAT(hire_date, %D) > 10000;
+select last_name,hire_date from employees where （TO_DAYS(NOEW()) - to_days(hire_date)） > 1000
+select last_name,hire_date from employees where  DATEDIFF(NOEW(), hire_date) > 10000;
+# 8.做一个查询，产生下面的结果
+<last_name> earns <salary> monthly but wants <salary*3>
+select concat(last_name, 'earns', truncate(salary, 0), 'monthly but wants', truncate(salary * 3, 0), 'Dream Salary') from employees;
+# 9.使用CASE-WHEN，按照下面的条件：
+-- job grade
+-- AD_PRES A
+-- ST_MAN B
+-- IT_PROG C
+-- SA_REP D
+-- ST_CLERK E
+-- 产生下面的结果
+-- Last_name Job_id Grade
+-- king AD_PRES A
+select  last_name Last_name, job_id Job_id,
+CASE job_id
+WHEN 'AD_PRES' THEN 'A'
+WHEN 'ST_MAN' THEN 'B'
+WHEN 'IT_PROG' THEN 'C'
+WHEN 'SA_REP' THEN 'D'
+WHEN 'ST_CLERK' THEN 'E'
+END 'grade'
+from employees;
+```
+
+- 计算天数直接使用：`DATEDIFF(NOW(), hire_date)`也可以使用`TO_DAYS(NOW()) - TO_DAYS(hire_date);`
+- `CASE WHEN THEN END`简单使用
+- 截取小数点多少位使用：`TRUNCATE(salary, 0)`\
+- 格式化日期可以使用：`DATE_FORMAT()`，其中`%i`代表分钟
