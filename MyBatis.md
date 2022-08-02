@@ -1056,3 +1056,266 @@ select department_name, location_id, COUNT(employee_id), AVG(salary) avg_sal fro
 select  department_name,job_id,MIN(salary) from departments d left join employees e on e.department_id = d.department_id group by department_name, job_id;
 ```
 
+# 子查询
+
+子查询指的是一个查询语句嵌套在另外一个查询语句内部的查询。
+
+`SQL`中子查询的使用大大增强了`SELECT`查询的能力，因为很多时候查询需要从结果集中获取数据，或者需要从同一个表中先计算得出一个数据结果，然后与这个数据结果进行比较。
+
+子查询【内查询】在著查询之前一次执行完毕。子查询的结果被著查询也就是外查询使用。
+
+注意：
+
+1. 子查询要包含在括号内
+2. 将子查询放在比较条件的右侧
+3. 单行操作符对应单行子查询，多行操作符对应多行子查询
+
+子查询分类方式：
+
+- 查询结果是一条还是多条：单行子查询、多行子查询
+
+- 内查询是否被执行多次：关联子查询、非关联子查询
+  - 子查询从数据表中查询了数据结果，如果这个数据结果只执行一次，然后这个数据结果作为主查询的条件进行执行，那么这样的子查询叫做不相关子查询。
+  - 同样，如果子查询需要执行多次，即采用循环的方式，先从外部查询开始，每次都传入子查询进行查 询，然后再将结果反馈给外部，这种嵌套的执行方式就称为相关子查询。
+
+## 单行子查询
+
+单行子查询有固定的比较操作符：`= > >= < <= <> !=`
+
+题目：返回公司工资最少的员工的`last_name`，`job_id`和`salary`
+
+```sql
+select last_name, job_id, salary from employees where salary = (select MIN(salary) from employees);
+```
+
+题目：查询最低工资大于`50`号部门最低工资的部门`id`和其最低工资
+
+```sql
+select department_id, MIN(salary) from employees group by department_id having MIN(salary) > (select MIN(salary) from employees where department_id = 50)
+```
+
+题目：显式员工的`employee_id`,`last_name`和`location`。其中，若员工`department_id`与`location_id`为`1800`的`department_id`相同，则`location`为`Canada`，其余则为`USA`。
+
+```sql
+select employee_id, last_name,
+CASE department_id
+WHEN (select department_id from departments where location_id = '1800') THEN 'Canada'
+ELSE 'USA'
+END location
+from employees;
+```
+
+**若子查询查询结果为空值则不返回任何行。如果使用的是单行子查询的比较操作符但是子查询却不是单行子查询则会报错**
+
+## 多行子查询
+
+多行子查询的比较操作符有：`in any all some`
+
+- `IN`：等于列表中的任意一个
+- `ANY`：需要和单行操作符一起使用，和子查询返回的某一个值比较
+- `ALL`：需要和单行比较操作符一起使用，和子查询返回的所有的值进行比较
+- `SOME`：实际上是`ANY`的一个别名，通常不使用`SOME`使用`ANY`
+
+题目：返回其它`job_id`中比`job_id`为`IT_PROG`部门任一工资低的员工的员工号、姓名、`job_id`以及`salary`
+
+```sql
+select employee_id, last_name, job_id, salary from employee where job_id < ALL (select select salary from employees where job_id = 'IT_PROG');
+```
+
+题目：查询平均工资最低的部门`id`
+
+```sql
+select department_id from employees group by department_id having avg(salary) < ALL(select avg(salary) avg_sal from employees group by department_id);
+```
+
+## 相关子查询
+
+如果子查询的执行依赖于外部查询，通常情况下都是因为子查询中的表用到了外部的表，并进行了条件关联，因此每执行一次外部查询，子查询都要重新计算一次，这样的子查询就称之为关联子查询。
+
+题目：查询员工中工资大于本部门平均工资的员工的`last_name,salary`和其`department_id`
+
+```sql
+select last_name, salary, department_id from employees outer where salary > (select AVG(salary) from employees where department_id = outer.department_id);
+```
+
+也可以在`from`中使用：
+```sql
+select last_name, salary, department_id from employees e1, (select department_id, AVG(salary) dept_avg_sal from employees group by department_id) e2 where e1.department_id = e2.department_id and e1.salart > e2.dept_avg_sal;
+```
+
+题目：查询员工的`id,salary`,按照`department_name`排序
+
+```sql
+select employees_id, salary from employees e order by (select department_name from departments d where d.deaprtments_id = e.deaprtments_id);
+```
+
+## `EXISTS`与`NOT EXISTS`关键字
+
+- 关联子查询通常也会和`EXISTS`操作符来一起使用，用来检查在子查询中是否存在满足条件的行。
+- 如果在子查询中不存在满足条件的行：
+  - 条件返回`false`
+  - 继续在子查询中查找
+
+- 如果在子查询中存在满足条件的行：
+  - 条件返回`true`
+  - 不在子查询中继续查找
+
+题目：查询公司管理者的`employee_id，last_name，job_id，department_id`信息
+
+```sql
+select employee_id, last_name, job_id, department_id from employees e1 where EXISTS (select * from employees e2 where e1.employee_id = e2.manager_id);
+```
+
+采用自连接方式：
+
+```sql
+select distinct employee_id, last_name, job_id, department_id from employees e1 join employees e2 where e1.employee_id = e2.manager_id;
+```
+
+也可以采用多行子查询的方式：
+
+```sql
+select employee_id, last_name, job_id, department_id from employees where employees_id in (select distinct manager_id from employees);
+```
+
+题目：查询`departments`表中，不存在于`employees`表中的部门的`department_id`和`department_name`
+
+```sql
+select department_id, department_name from departments d where NOT EXISTS (select 'X' from employees where department_id = d.department_id);
+```
+
+## 自连接优先
+
+**很多可以可以使用子查询的，也可以使用自连接。一般情况建议你使用自连接，因为在许多 DBMS 的处理过 程中，对于自连接的处理速度要比子查询快得多。 可以这样理解：子查询实际上是通过未知表进行查询后的条件判断，而自连接是通过已知的自身数据表 进行条件判断，因此在大部分 DBMS 中都对自连接处理进行了优化。**
+
+## 练习
+
+```sql
+#1.查询和Zlotkey相同部门的员工姓名和工资
+select last_name, salary from employees where department_id = (select department_id from employees where last_name = 'Zlotkey');
+
+#2.查询工资比公司平均工资高的员工的员工号，姓名和工资。
+select employee_id, last_name, salary from employees where salary > (select AVG(salary) from employees);
+
+#3.选择工资大于所有JOB_ID = 'SA_MAN'的员工的工资的员工的last_name, job_id, salary
+select last_name, job_id, salary from employees where salary > (select salary from employees where job_id = 'SA_MAN');
+
+#4.查询和姓名中包含字母u的员工在相同部门的员工的员工号和姓名
+select employee_id, last_name from employees where department_id = ANY(select distinct department_id from employees where last_name like '%u%');
+
+#5.查询在部门的location_id为1700的部门工作的员工的员工号
+select employee_id from employees where department_id in(select department_id from departments where location_id = 1700);
+
+#6.查询管理者是King的员工姓名和工资
+select last_name, salary from employee where manager_id = (select employee_id from employees where last_name = 'King');
+
+#7.查询工资最低的员工信息: last_name, salary
+select last_name, salary from employees where salart = (select MIN(salary) from employees);
+
+#8.查询平均工资最低的部门信息
+SELECT * FROM departments WHERE department_id = (SELECT department_id
+FROM employees GROUP BY department_id HAVING AVG(salary) <= ALL(
+SELECT AVG(salary) avg_sal FROM employees GROUP BY department_id));
+
+#9.查询平均工资最低的部门信息和该部门的平均工资（相关子查询）
+SELECT d.*,dept_avg_sal.avg_sal
+FROM departments d,(
+SELECT department_id,AVG(salary) avg_sal
+FROM employees
+GROUP BY department_id
+ORDER BY avg_sal
+LIMIT 0,1) dept_avg_sal
+WHERE d.department_id = dept_avg_sal.department_id
+
+#10.查询平均工资最高的 job 信息
+SELECT *
+FROM jobs
+WHERE job_id = (
+SELECT job_id
+FROM employees
+GROUP BY job_id
+HAVING AVG(salary) >= ALL(
+SELECT AVG(salary)
+FROM employees
+GROUP BY job_id
+)
+);
+
+#11.查询平均工资高于公司平均工资的部门有哪些?
+SELECT department_id
+FROM employees
+WHERE department_id IS NOT NULL
+GROUP BY department_id
+HAVING AVG(salary) > (
+SELECT AVG(salary)
+FROM employees
+);
+
+#12.查询出公司中所有 manager 的详细信息
+SELECT DISTINCT e1.employee_id, e1.last_name, e1.salary
+FROM employees e1 JOIN employees e2
+WHERE e1.employee_id = e2.manager_id;
+
+#13.各个部门中 最高工资中最低的那个部门的 最低工资是多少?
+SELECT MIN(salary)
+FROM employees
+WHERE department_id = (
+SELECT department_id
+FROM employees
+GROUP BY department_id
+HAVING MAX(salary) <= ALL(
+SELECT MAX(salary) max_sal
+FROM employees
+GROUP BY department_id
+)
+);
+
+#14.查询平均工资最高的部门的 manager 的详细信息: last_name, department_id, email, salary
+SELECT *
+FROM employees
+WHERE employee_id IN (
+SELECT DISTINCT manager_id
+FROM employees e,(
+SELECT department_id,AVG(salary) avg_sal
+FROM employees
+GROUP BY department_id
+ORDER BY avg_sal DESC
+LIMIT 0,1) dept_avg_sal
+WHERE e.department_id = dept_avg_sal.department_id
+)
+
+#15. 查询部门的部门号，其中不包括job_id是"ST_CLERK"的部门号
+SELECT department_id
+FROM departments d
+WHERE department_id NOT IN (
+SELECT DISTINCT department_id
+FROM employees
+WHERE job_id = 'ST_CLERK'
+);
+
+#16. 选择所有没有管理者的员工的last_name
+#[在 e2 表中不存在有 employee_id 是 e1 员工中的 manager_id 那么就表示这个是没有管理者的]
+select last_name from employees e1 where NOT EXISTS(select * from employees e2 where e1.manager_id = e2.employee_id);
+
+#17．查询员工号、姓名、雇用时间、工资，其中员工的管理者为 'De Haan'
+select employee_id, last_name, hire_date, salary from employees where manager_id = (select employee_id from employees where last_name = 'De Haan');
+
+select employee_id, last_name, hire_date, salary from employees e1 where esists (select * from employee e2 where e1.manager_id = e2.employee_id and e2.last_name = 'De Haan');
+
+#18.查询各部门中工资比本部门平均工资高的员工的员工号, 姓名和工资（相关子查询）
+select employee_id, last_name, salary from employees e1 where salary > (select AVG(salary) from employee e2 where e1.department_id = e2.department_id group by e2.department_id);
+SELECT employee_id,last_name,salary
+FROM employees e1,
+(SELECT department_id,AVG(salary) avg_sal
+FROM employees e2 GROUP BY department_id
+) dept_avg_sal
+WHERE e1.`department_id` = dept_avg_sal.department_id
+AND e1.`salary` > dept_avg_sal.avg_sal;
+
+#19.查询每个部门下的部门人数大于 5 的部门名称（相关子查询）
+select department_name,department_id from departments d where 5 < (select count(*) from employees e where d.department_id = e.department_id group by d.department_id);
+
+#20.查询每个国家下的部门个数大于 2 的国家编号（相关子查询）
+select country_id from location l where 2 < (select count(*) from department d where l.location_id = d.location_id group by d.location_id);
+```
+
