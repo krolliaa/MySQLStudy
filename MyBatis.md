@@ -1028,3 +1028,31 @@ from ---> on ---> where ---> group by ---> having ---> select 的字段 ---> dis
 【这里就获取到的表大概率是不止七张的这样讲只不过是便于理解，因为在连接阶段就可能产生更多的虚拟表】
 
 **<FONT COLOR="RED">所谓`SQL`底层运行的原理，就是我们刚才讲到的执行顺序。</FONT>**
+
+## 练习
+
+```sql
+#1.where子句可否使用组函数进行过滤?
+不可以
+#2.查询公司员工工资的最大值，最小值，平均值，总和
+SELECT MAX(salary), MIN(salary), AVG(salary), SUM(salary)
+FROM employees;
+#3.查询各job_id的员工工资的最大值，最小值，平均值，总和
+SELECT job_id, MAX(salary), MIN(salary), AVG(salary), SUM(salary)
+FROM employees
+GROUP BY job_id;
+#4.选择具有各个job_id的员工人数
+SELECT job_id, COUNT(*)
+FROM employees
+GROUP BY job_id;
+# 5.查询员工最高工资和最低工资的差距（DIFFERENCE）
+SELECT MAX(salary), MIN(salary), MAX(salary) - MIN(salary) DIFFERENCE
+FROM employees;
+# 6.查询各个管理者手下员工的最低工资，其中最低工资不能低于6000，没有管理者的员工不计算在内
+select manager_id, MIN(salary) from employees where manager_id IS NOT null group by manager_id having MIN(salary) >= 6000;
+# 7.查询所有部门的名字，location_id，员工数量和平均工资，并按平均工资降序
+select department_name, location_id, COUNT(employee_id), AVG(salary) avg_sal from employees e right join departments d on e.department_id = d.department_id group by deaprtment_name, location_id order by avg_sal desc;
+# 8.查询每个工种、每个部门的部门名、工种名和最低工资
+select  department_name,job_id,MIN(salary) from departments d left join employees e on e.department_id = d.department_id group by department_name, job_id;
+```
+
